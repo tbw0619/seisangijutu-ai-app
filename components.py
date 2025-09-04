@@ -93,3 +93,57 @@ def display_contact_llm_response(llm_response):
     content["answer"] = answer
 
     return content
+
+
+def display_faiss_initialization_sidebar():
+    """
+    FAISS-RAG初期化ボタンを表示
+    
+    Returns:
+        bool: 初期化ボタンが押されたかどうか
+    """
+    # 要件チェック
+    api_key_ok = bool(os.environ.get("OPENAI_API_KEY"))
+    
+    if not api_key_ok:
+        st.error("OpenAI APIキーが設定されていません。")
+        return False
+    else:
+        if not st.session_state.get('rag_initialized', False):
+            return st.button("🚀 RAG機能を初期化", help="教科書・教材データベースを初期化")
+        else:
+            st.success("✅ RAG機能が有効です")
+            if st.button("🔄 RAG機能を再初期化"):
+                st.session_state.rag_initialized = False
+                st.rerun()
+            return False
+
+
+def display_faiss_rag_status():
+    """
+    FAISS-RAG機能のステータス表示
+    """
+    if st.session_state.get('rag_initialized', False):
+        chunks_count = len(st.session_state.get('pdf_chunks', []))
+        st.success(f"✅ RAG機能が有効です（{chunks_count}チャンク）")
+    else:
+        st.info("⚡ RAG機能を初期化してから質問を開始してください。")
+
+
+def display_faiss_search_results(search_results):
+    """
+    FAISS検索結果の詳細表示
+    
+    Args:
+        search_results: FAISS検索結果のリスト
+    """
+    if not search_results:
+        return
+    
+    with st.expander("🔍 検索結果詳細", expanded=False):
+        for i, result in enumerate(search_results, 1):
+            st.markdown(f"**検索結果 {i}**")
+            st.markdown(f"- **類似度スコア**: {result['similarity_score']:.3f}")
+            st.markdown(f"- **出典ファイル**: {result['metadata'].get('source_file', 'unknown')}")
+            st.markdown(f"- **内容プレビュー**: {result['content'][:100]}...")
+            st.markdown("---")

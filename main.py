@@ -645,18 +645,27 @@ def main():
         st.markdown("---")
         st.markdown("**🧠 RAG機能の初期化**")
         
-        if components.display_faiss_initialization_sidebar():
-            with st.spinner(ct.SPINNER_TEXT):
-                success = load_pdf_with_faiss()
-                if success:
-                    st.session_state.rag_initialized = True
-                    st.success("FAISS-RAG機能の初期化が完了しました！")
-                    st.rerun()
-                else:
-                    st.session_state.rag_initialized = False
+        try:
+            if components.display_faiss_initialization_sidebar():
+                with st.spinner(ct.SPINNER_TEXT):
+                    success = load_pdf_with_faiss()
+                    if success:
+                        st.session_state.rag_initialized = True
+                        st.success("FAISS-RAG機能の初期化が完了しました！")
+                        st.rerun()
+                    else:
+                        st.session_state.rag_initialized = False
+        except Exception as e:
+            st.error(f"RAG初期化エラー: {e}")
+            st.session_state.rag_initialized = False
     
     # FAISS-RAG機能のステータス表示
-    components.display_faiss_rag_status()
+    try:
+        components.display_faiss_rag_status()
+    except Exception as e:
+        st.warning(f"ステータス表示エラー: {e}")
+        if not st.session_state.get('rag_initialized', False):
+            st.info("⚡ RAG機能を初期化してから質問を開始してください。")
     
     # 初期メッセージの追加（初回のみ）
     if not st.session_state.messages:
@@ -714,7 +723,10 @@ def main():
                         }
                     
                     # 検索結果詳細表示
-                    components.display_faiss_search_results(search_results)
+                    try:
+                        components.display_faiss_search_results(search_results)
+                    except Exception as e:
+                        st.warning(f"検索結果表示エラー: {e}")
             
             # 会話ログに追加
             st.session_state.messages.append({
