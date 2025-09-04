@@ -205,3 +205,41 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Application logs
+logs/
+*.log
+
+# Development/Windows specific files
+requirements_windows.txt
+setup_main.py
+
+# コスト最適化アプリ専用設定
+# ベクターストアキャッシュ（永続化データ）
+data/vector_store/
+data/cache/
+data/api_usage.json
+
+# 教材データ（機密情報）
+data/教科書データ/
+data/_*_disabled/
+
+# 旧データ（削除済みMTG議事録など）
+data/MTG議事録/
+data/サービスについて/
+data/会社について/
+data/社員について/
+data/顧客について/
+
+# 環境設定
+.env
+.env.local
+.env.production
+
+# 一時ファイル
+*.tmp
+temp/
+tmp/

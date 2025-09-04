@@ -5,8 +5,17 @@
 ############################################################
 # ライブラリの読み込み
 ############################################################
+import os
+import warnings
 from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
+
+# 環境変数の設定
+if not os.getenv("USER_AGENT"):
+    os.environ["USER_AGENT"] = "生産技術授業支援アプリ/1.0"
+
+# PDF解析時の警告を抑制
+warnings.filterwarnings("ignore", category=UserWarning, module="langchain_community.document_loaders.parsers.pdf")
 
 
 ############################################################
@@ -16,10 +25,11 @@ from langchain_community.document_loaders.csv_loader import CSVLoader
 # ==========================================
 # 画面表示系
 # ==========================================
-APP_NAME = "社内情報特化型生成AI検索アプリ"
-ANSWER_MODE_1 = "社内文書検索"
-ANSWER_MODE_2 = "社内問い合わせ"
-CHAT_INPUT_HELPER_TEXT = "こちらからメッセージを送信してください。"
+APP_NAME = "生産技術授業支援アプリ"
+APP_VERSION = "1.0"
+ANSWER_MODE_1 = "問い合わせ"
+ANSWER_MODE_2 = "問い合わせ"
+CHAT_INPUT_HELPER_TEXT = "生産技術に関する質問を入力してください。"
 DOC_SOURCE_ICON = ":material/description: "
 LINK_SOURCE_ICON = ":material/link: "
 WARNING_ICON = ":material/warning:"
@@ -33,14 +43,7 @@ SPINNER_TEXT = "回答生成中..."
 LOG_DIR_PATH = "./logs"
 LOGGER_NAME = "ApplicationLog"
 LOG_FILE = "application.log"
-APP_BOOT_MESSAGE = "アプリが起動されました。"
-
-
-# ==========================================
-# LLM設定系
-# ==========================================
-MODEL = "gpt-4o-mini"
-TEMPERATURE = 0.5
+APP_BOOT_MESSAGE = f"{APP_NAME} v{APP_VERSION} が起動されました。"
 
 
 # ==========================================
@@ -50,11 +53,57 @@ RAG_TOP_FOLDER_PATH = "./data"
 SUPPORTED_EXTENSIONS = {
     ".pdf": PyMuPDFLoader,
     ".docx": Docx2txtLoader,
-    ".csv": lambda path: CSVLoader(path, encoding="utf-8")
+    ".csv": lambda path: CSVLoader(path, encoding="utf-8"),
+    ".txt": lambda path: TextLoader(path, encoding="utf-8")
 }
-WEB_URL_LOAD_TARGETS = [
-    "https://generative-ai.web-camp.io/"
+
+# ==========================================
+# RAG設定系（統合設定・コスト最適化対応）
+# ==========================================
+
+# PDFファイル設定
+PDF_FILES = [
+    # 主要な教科書データ（メモリ制限を考慮して厳選）
+    "./data/教科書データ/313生シ_1_1.pdf",
+    "./data/教科書データ/313生シ_1_2.pdf",
+    "./data/教科書データ/313生シ_1_3.pdf",
+    "./data/教科書データ/313生シ_1_4.pdf",
+    "./data/教科書データ/313生シ_1_5.pdf"
 ]
+
+# ベクターストア永続化設定（コスト削減）
+VECTOR_STORE_PATH = "./data/vector_store/"  # ベクターストア保存ディレクトリ
+VECTOR_INDEX_FILE = "faiss_index"  # FAISSインデックスファイル名
+CHUNKS_CACHE_FILE = "chunks_cache.pkl"  # チャンクキャッシュファイル名
+EMBEDDINGS_CACHE_DIR = "./data/embeddings_cache/"  # 埋め込みキャッシュディレクトリ
+
+# チャンク分割設定（統一設定）
+CHUNK_SIZE = 1000  # FAISSに最適化されたサイズ
+CHUNK_OVERLAP = 100  # 適度なオーバーラップ
+FAISS_CHUNK_SIZE = CHUNK_SIZE  # 互換性
+FAISS_CHUNK_OVERLAP = CHUNK_OVERLAP  # 互換性
+
+# 検索設定（統一設定）
+MAX_CHUNKS = 300  # メモリ制限を考慮した最大チャンク数
+SEARCH_K = 5  # 検索結果数
+FAISS_MAX_CHUNKS = MAX_CHUNKS  # 互換性
+FAISS_SEARCH_K = SEARCH_K  # 互換性
+NUM_RETRIEVE_DOCUMENTS = 2  # レトリーブ文書数
+
+# OpenAI設定（統合設定・コスト最適化）
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+OPENAI_CHAT_MODEL = "gpt-4o-mini"  # コスト削減のためminiモデルに変更
+OPENAI_TEMPERATURE = 0.1  # 計算問題の精度を高めるため低い値
+OPENAI_MAX_TOKENS = 1500  # トークン数削減でコスト削減
+
+# コスト管理設定
+MAX_DAILY_API_CALLS = 100  # 1日あたりの最大API呼び出し数
+CACHE_EXPIRY_HOURS = 24  # キャッシュの有効期限（時間）
+ENABLE_RESPONSE_CACHE = True  # レスポンスキャッシュの有効/無効
+
+# 互換性のための設定
+MODEL = OPENAI_CHAT_MODEL  # utils.pyとの互換性
+TEMPERATURE = OPENAI_TEMPERATURE  # utils.pyとの互換性
 
 
 # ==========================================
@@ -63,7 +112,7 @@ WEB_URL_LOAD_TARGETS = [
 SYSTEM_PROMPT_CREATE_INDEPENDENT_TEXT = "会話履歴と最新の入力をもとに、会話履歴なしでも理解できる独立した入力テキストを生成してください。"
 
 SYSTEM_PROMPT_DOC_SEARCH = """
-    あなたは社内の文書検索アシスタントです。
+    あなたは生産技術教育のアシスタントです。
     以下の条件に基づき、ユーザー入力に対して回答してください。
 
     【条件】
@@ -75,7 +124,7 @@ SYSTEM_PROMPT_DOC_SEARCH = """
 """
 
 SYSTEM_PROMPT_INQUIRY = """
-    あなたは社内情報特化型のアシスタントです。
+    あなたは生産技術教育特化型のアシスタントです。
     以下の条件に基づき、ユーザー入力に対して回答してください。
 
     【条件】
@@ -85,9 +134,71 @@ SYSTEM_PROMPT_INQUIRY = """
     4. できる限り詳細に、マークダウン記法を使って回答してください。
     5. マークダウン記法で回答する際にhタグの見出しを使う場合、最も大きい見出しをh3としてください。
     6. 複雑な質問の場合、各項目についてそれぞれ詳細に回答してください。
-    7. 必要と判断した場合は、以下の文脈に基づかずとも、一般的な情報を回答してください。
+    7. 必要と判断した場合は、以下の文脈に基づかずとも、生産技術に関する一般的な情報を回答してください。
+    8. 数式を表示する際は、必ず$記号で囲んでください（例：$V = I \\times R$）。
 
     {context}
+"""
+
+SYSTEM_PROMPT_STUDENT_FRIENDLY = """
+あなたは工業高校の電気科の優秀な先生です。生徒からの質問に対して、分かりやすく親しみやすい口調で回答してください。
+
+【重要な指導方針】
+1. 高校生レベルの言葉で説明する
+2. 計算問題では**必ず数式を段階的に表示**する
+3. 数式は**$記号で囲んで**LaTeX形式で表示する（例：$V = I × R$）
+4. 身近な例（家電、水道、懐中電灯など）で説明する
+5. 計算過程は**ステップバイステップ**で詳細に説明する
+6. 実習や実験につながる内容を含める
+7. 単位の変換も明確に示す
+
+【数式表示の厳格なルール】
+- 必ず$記号で囲む：$V = I × R$
+- 掛け算は×記号を使用：$P = V × I$
+- 二乗は²を使用：$P = I² × R$
+- 分数は/を使用：$P = V²/R$
+- 合計はΣを使用：$ΣV = 0$
+- 省略記号は…を使用：$R = R1 + R2 + … + Rn$
+- 単位は直接記述：$V = 2A × 5Ω = 10V$（textコマンドは使わない）
+- LaTeX記法は使わない：×（\\times禁止）、Ω（\\Omega禁止）、省略記号（\\dots禁止）
+- 変数名は正確に：R1, R2, R3（R2Sなどの誤記は禁止）
+
+【良い数式の例】
+- オームの法則：$V = I × R$
+- 電力の公式：$P = V × I$
+- 電力の別の式：$P = I² × R$
+- 計算例：$V = 2A × 5Ω = 10V$
+- 抵抗の直列接続：$R = R1 + R2 + R3 + … + Rn$
+- 抵抗の並列接続：$1/R = 1/R1 + 1/R2 + … + 1/Rn$
+
+【悪い例（使用禁止）】
+- $V = I \\times R$（\\timesは禁止）
+- $V = 2\\text(A) \\times 5\\text(Ω)$（\\textは禁止）
+- [ V = I × R ]（[]は禁止、$記号を使う）
+
+【計算問題の解き方】
+1. **与えられた値を整理**
+2. **使用する公式を$記号で明示**
+3. **数値を代入して計算**
+4. **単位を確認**
+5. **答えの妥当性をチェック**
+
+【回答の構成】
+1. 挨拶と質問の確認 😊
+2. 教科書の内容の要約（重要ポイント）
+3. 身近な例での分かりやすい説明
+4. **計算問題がある場合は詳細な解法**（数式を$記号で囲む）
+5. 覚え方やコツ
+6. 実習での活用方法
+
+【生徒の質問】
+{query}
+
+【教科書の関連内容】
+{context}
+
+計算問題では、必ず数式を$記号で囲んで（例：$V = I × R$）表示し、計算過程を段階的に示してください。
+工業高校生が理解しやすいように、親切丁寧に回答してください。
 """
 
 
@@ -104,9 +215,11 @@ NO_DOC_MATCH_ANSWER = "該当資料なし"
 COMMON_ERROR_MESSAGE = "このエラーが繰り返し発生する場合は、管理者にお問い合わせください。"
 INITIALIZE_ERROR_MESSAGE = "初期化処理に失敗しました。"
 NO_DOC_MATCH_MESSAGE = """
-    入力内容と関連する社内文書が見つかりませんでした。\n
+    入力内容と関連する教科書・教材が見つかりませんでした。\n
     入力内容を変更してください。
 """
 CONVERSATION_LOG_ERROR_MESSAGE = "過去の会話履歴の表示に失敗しました。"
 GET_LLM_RESPONSE_ERROR_MESSAGE = "回答生成に失敗しました。"
 DISP_ANSWER_ERROR_MESSAGE = "回答表示に失敗しました。"
+
+# 注意: チャンク設定は上記のRAG設定系セクションに統合されました
