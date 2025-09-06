@@ -58,8 +58,10 @@ SUPPORTED_EXTENSIONS = {
 }
 
 # ==========================================
-# FAISS-RAG設定系（Streamlit Community Cloud向けに最適化）
+# RAG設定系（統合設定・コスト最適化対応）
 # ==========================================
+
+# PDFファイル設定
 PDF_FILES = [
     # 主要な教科書データ（メモリ制限を考慮して厳選）
     "./data/教科書データ/313生シ_1_1.pdf",
@@ -67,25 +69,41 @@ PDF_FILES = [
     "./data/教科書データ/313生シ_1_3.pdf",
     "./data/教科書データ/313生シ_1_4.pdf",
     "./data/教科書データ/313生シ_1_5.pdf"
-    
 ]
 
-# FAISS設定（Streamlit Community Cloud向けに最適化）
-FAISS_CHUNK_SIZE = 1000  # チャンクサイズを増加してチャンク数を削減
-FAISS_CHUNK_OVERLAP = 100
-FAISS_MAX_CHUNKS = 300  # メモリ制限を考慮して削減
-FAISS_SEARCH_K = 5
-SEARCH_K = 5  # 通常のRAG検索用
+# ベクターストア永続化設定（コスト削減）
+VECTOR_STORE_PATH = "./data/vector_store/"  # ベクターストア保存ディレクトリ
+VECTOR_INDEX_FILE = "faiss_index"  # FAISSインデックスファイル名
+CHUNKS_CACHE_FILE = "chunks_cache.pkl"  # チャンクキャッシュファイル名
+EMBEDDINGS_CACHE_DIR = "./data/embeddings_cache/"  # 埋め込みキャッシュディレクトリ
 
-# OpenAI設定（統合版アプリ用）
+# チャンク分割設定（統一設定）
+CHUNK_SIZE = 1000  # FAISSに最適化されたサイズ
+CHUNK_OVERLAP = 100  # 適度なオーバーラップ
+FAISS_CHUNK_SIZE = CHUNK_SIZE  # 互換性
+FAISS_CHUNK_OVERLAP = CHUNK_OVERLAP  # 互換性
+
+# 検索設定（統一設定）
+MAX_CHUNKS = 300  # メモリ制限を考慮した最大チャンク数
+SEARCH_K = 5  # 検索結果数
+FAISS_MAX_CHUNKS = MAX_CHUNKS  # 互換性
+FAISS_SEARCH_K = SEARCH_K  # 互換性
+NUM_RETRIEVE_DOCUMENTS = 2  # レトリーブ文書数
+
+# OpenAI設定（統合設定・コスト最適化）
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
-OPENAI_CHAT_MODEL = "gpt-4o"  # 物理計算・数式処理用にGPT-4oに変更
-OPENAI_TEMPERATURE = 0.1  # 計算問題の精度を高めるため低い値に設定
-OPENAI_MAX_TOKENS = 2000  # 詳細な計算過程表示のため増量
+OPENAI_CHAT_MODEL = "gpt-4o-mini"  # コスト削減のためminiモデルに変更
+OPENAI_TEMPERATURE = 0.1  # 計算問題の精度を高めるため低い値
+OPENAI_MAX_TOKENS = 1500  # トークン数削減でコスト削減
+
+# コスト管理設定
+MAX_DAILY_API_CALLS = 100  # 1日あたりの最大API呼び出し数
+CACHE_EXPIRY_HOURS = 24  # キャッシュの有効期限（時間）
+ENABLE_RESPONSE_CACHE = True  # レスポンスキャッシュの有効/無効
 
 # 互換性のための設定
-MODEL = "gpt-4o"  # utils.pyとの互換性
-TEMPERATURE = 0.1  # utils.pyとの互換性
+MODEL = OPENAI_CHAT_MODEL  # utils.pyとの互換性
+TEMPERATURE = OPENAI_TEMPERATURE  # utils.pyとの互換性
 
 
 # ==========================================
@@ -204,11 +222,4 @@ CONVERSATION_LOG_ERROR_MESSAGE = "過去の会話履歴の表示に失敗しま�
 GET_LLM_RESPONSE_ERROR_MESSAGE = "回答生成に失敗しました。"
 DISP_ANSWER_ERROR_MESSAGE = "回答表示に失敗しました。"
 
-#==========================================
-# チャンク分割設定（最軽量設定）
-#==========================================
-CHUNK_SIZE = 500  # さらに小さくしてメモリ使用量を最小化
-CHUNK_OVERLAP = 25  # オーバーラップも最小化
-
-# 検索ドキュメント数（最小設定）
-NUM_RETRIEVE_DOCUMENTS = 2
+# 注意: チャンク設定は上記のRAG設定系セクションに統合されました
