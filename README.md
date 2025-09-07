@@ -1,0 +1,1 @@
+# seisangijutu-ai-app
