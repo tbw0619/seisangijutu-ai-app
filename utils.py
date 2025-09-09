@@ -300,27 +300,42 @@ def initialize_rag():
 
 def format_latex_equations(text):
     """
-    LaTeX数式を人間が読みやすい形式に変換
+    LaTeX数式を厳格なルールに従って人間が読みやすい形式に変換
     """
     import re
     
-    # LaTeX記号を読みやすい形式に変換
+    # LaTeX記号を厳格ルールに従って変換
     latex_conversions = {
-        r'\\propto': '∝ (比例)',
-        r'\\frac\{1\}\{([^}]+)\}': r'1/\1',
-        r'\\frac\{([^}]+)\}\{([^}]+)\}': r'\1/\2',
-        r'\\cdot': '×',
+        # 基本演算子
         r'\\times': '×',
+        r'\\cdot': '×',
         r'\\div': '÷',
         r'\\pm': '±',
         r'\\mp': '∓',
+        
+        # 比較演算子
         r'\\leq': '≤',
         r'\\geq': '≥',
         r'\\neq': '≠',
         r'\\approx': '≈',
-        r'\\sqrt\{([^}]+)\}': r'√(\1)',
-        r'\\sum': 'Σ',
-        r'\\int': '∫',
+        r'\\propto': '∝',
+        
+        # 分数を/形式に変換
+        r'\\frac\{([^}]+)\}\{([^}]+)\}': r'\1/\2',
+        
+        # 累乗を²,³,⁴形式に変換
+        r'\^\{2\}': '²',
+        r'\^2': '²',
+        r'\^\{3\}': '³',
+        r'\^3': '³',
+        r'\^\{4\}': '⁴',
+        r'\^4': '⁴',
+        r'\^\{([^}]+)\}': r'^(\1)',
+        r'\^([0-9]+)': r'^\1',
+        
+        # ギリシャ文字（単位として使用）
+        r'\\Omega': 'Ω',
+        r'\\omega': 'ω',
         r'\\pi': 'π',
         r'\\alpha': 'α',
         r'\\beta': 'β',
@@ -329,15 +344,23 @@ def format_latex_equations(text):
         r'\\theta': 'θ',
         r'\\lambda': 'λ',
         r'\\mu': 'μ',
-        r'\\omega': 'ω',
-        r'\\Omega': 'Ω',
-        r'([A-Za-z])_\{([^}]+)\}': r'\1_\2',
-        r'([A-Za-z])_([0-9]+)': r'\1_\2',
-        r'\^\{([^}]+)\}': r'^(\1)',
-        r'\^([0-9]+)': r'^\1'
+        
+        # 数学記号
+        r'\\sum': 'Σ',
+        r'\\int': '∫',
+        r'\\sqrt\{([^}]+)\}': r'√(\1)',
+        r'\\dots': '…',
+        r'\\ldots': '…',
+        
+        # 下付き文字の処理
+        r'([A-Za-z])_\{([^}]+)\}': r'\1\2',
+        r'([A-Za-z])_([0-9]+)': r'\1\2',
+        
+        # textコマンドを削除
+        r'\\text\{([^}]+)\}': r'\1',
+        r'\\mathrm\{([^}]+)\}': r'\1',
     }
     
-    # $ または $$ で囲まれた数式を検出して変換
     def convert_math(match):
         math_content = match.group(1) if match.group(1) else match.group(2)
         
@@ -345,19 +368,19 @@ def format_latex_equations(text):
         for latex_pattern, replacement in latex_conversions.items():
             math_content = re.sub(latex_pattern, replacement, math_content)
         
-        # 数式として整形
-        return f"【{math_content}】"
+        # 数式を$記号で囲む（厳格ルールに従う）
+        return f"${math_content}$"
     
     # $$ で囲まれた数式を変換
     text = re.sub(r'\$\$\s*([^$]+?)\s*\$\$', convert_math, text)
-    # $ で囲まれた数式を変換
+    # 単一$で囲まれた数式はそのまま処理
     text = re.sub(r'(?<!\$)\$\s*([^$]+?)\s*\$(?!\$)', convert_math, text)
     
     # [ ] で囲まれた数式も変換
     text = re.sub(r'\[\s*([^\[\]]+?)\s*\]', convert_math, text)
     
-    # 空の数式記号を削除
-    text = re.sub(r'\$+', '', text)
+    # 重複した$記号を整理
+    text = re.sub(r'\$\$+', '$', text)
     
     return text
 
