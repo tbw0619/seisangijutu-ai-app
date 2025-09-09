@@ -153,6 +153,7 @@ if chat_message:
             # ストリーミング表示用のコンテナを作成
             response_container = st.empty()
             full_response = ""
+            formatted_response = ""
             
             # RAG機能を使ってストリーミング回答を取得
             llm_response_stream = utils.get_rag_chain_answer_qa_streaming(chat_message)
@@ -164,6 +165,10 @@ if chat_message:
                     # LaTeX数式の整形処理
                     formatted_response = utils.format_latex_equations(full_response)
                     response_container.markdown(formatted_response)
+            
+            # ストリーミングが空の場合のフォールバック
+            if not formatted_response:
+                formatted_response = utils.format_latex_equations(full_response)
             
             # 最終的なレスポンスの整形
             content = {

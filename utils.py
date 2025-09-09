@@ -298,6 +298,19 @@ def initialize_rag():
     return True
 
 
+def convert_to_subscript(text):
+    """
+    数字をUnicode下付き文字に変換
+    """
+    subscript_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+    }
+    result = ''
+    for char in text:
+        result += subscript_map.get(char, char)
+    return result
+
 def format_latex_equations(text):
     """
     LaTeX数式を厳格なルールに従って$記号で囲む形式に変換
@@ -352,9 +365,7 @@ def format_latex_equations(text):
         r'\\dots': '…',
         r'\\ldots': '…',
         
-        # 下付き文字の処理
-        r'([A-Za-z])_\{([^}]+)\}': r'\1\2',
-        r'([A-Za-z])_([0-9]+)': r'\1\2',
+        # 下付き文字の処理は後で個別に処理
         
         # textコマンドを削除
         r'\\text\{([^}]+)\}': r'\1',
@@ -367,6 +378,10 @@ def format_latex_equations(text):
         # LaTeX記号を順次変換
         for latex_pattern, replacement in latex_conversions.items():
             math_content = re.sub(latex_pattern, replacement, math_content)
+        
+        # 下付き文字の処理
+        math_content = re.sub(r'([A-Za-z])_\{([^}]+)\}', lambda m: m.group(1) + convert_to_subscript(m.group(2)), math_content)
+        math_content = re.sub(r'([A-Za-z])_([0-9]+)', lambda m: m.group(1) + convert_to_subscript(m.group(2)), math_content)
         
         # 数式を$記号で囲む（厳格ルールに従う）
         return f"${math_content}$"
