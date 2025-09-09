@@ -300,24 +300,26 @@ def initialize_rag():
 
 def format_latex_equations(text):
     """
-    LaTeX数式の整形処理
+    LaTeX数式の整形処理（Streamlit LaTeX対応）
     """
     import re
     
-    # [ ] で囲まれた数式を $$ $$ に変換
+    # StreamlitのLaTeX表示用に処理
+    # [ ] で囲まれた数式をStreamlit LaTeX形式に変換
     text = re.sub(r'\[\s*([^\[\]]+?)\s*\]', r'$$\1$$', text)
     
-    # 単一の$で囲まれた数式を$$に変換（既に$$で囲まれていない場合のみ）
-    text = re.sub(r'(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)', r'$$\1$$', text)
+    # 単一の$で囲まれたインライン数式を処理
+    text = re.sub(r'(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)', r'$\1$', text)
     
     # 数式内のアンダースコアを適切に処理（I_1 → I_{1}）
-    text = re.sub(r'\$\$([^$]*?)([A-Za-z])_([0-9]+)([^$]*?)\$\$', r'$$\1\2_{\3}\4$$', text)
+    text = re.sub(r'([A-Za-z])_([0-9]+)', r'\1_{\2}', text)
     
     # 複数の連続する$$を整理
     text = re.sub(r'\$\$\s*\$\$', r'$$', text)
     
-    # 数式の前後に適切な改行とスペースを追加
-    text = re.sub(r'\$\$([^$]+?)\$\$', r'\n\n$$\1$$\n\n', text)
+    # 空の数式を削除
+    text = re.sub(r'\$\$\s*\$\$', '', text)
+    text = re.sub(r'\$\s*\$', '', text)
     
     return text
 
@@ -389,3 +391,73 @@ def get_rag_chain_answer_qa(user_input):
             "answer": f"回答生成中にエラーが発生しました: {str(e)}",
             "source_documents": []
         }
+
+
+def get_rag_chain_answer_qa_streaming(user_input):
+    """
+    RAGチェーンを使った問い合わせ回答の取得（ストリーミング）
+    """
+    if not st.session_state.get('rag_initialized', False) or st.session_state.get('retriever') is None:
+        def error_generator():
+            yield {"content": "RAG機能が初期化されていません。サイドバーの「🚀 RAG機能を初期化」ボタンをクリックしてください。"}
+        return error_generator()
+    
+    try:
+        # LLMのオブジェクトを用意（ストリーミング対応）
+        llm = ChatOpenAI(
+            model_name=ct.MODEL, 
+            temperature=ct.TEMPERATURE,
+            max_tokens=ct.OPENAI_MAX_TOKENS,
+            streaming=True  # ストリーミングを有効化
+        )
+
+        # 会話履歴なしでもLLMに理解してもらえる、独立した入力テキストを取得するためのプロンプトテンプレートを作成
+        question_generator_template = ct.SYSTEM_PROMPT_CREATE_INDEPENDENT_TEXT
+        question_generator_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", question_generator_template),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}")
+            ]
+        )
+
+        # 問い合わせ用のプロンプト
+        question_answer_template = ct.SYSTEM_PROMPT_INQUIRY
+        question_answer_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", question_answer_template),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}")
+            ]
+        )
+
+        # 会話履歴なしでもLLMに理解してもらえる、独立した入力テキストを取得するためのRetrieverを作成
+        history_aware_retriever = create_history_aware_retriever(
+            llm, st.session_state.retriever, question_generator_prompt
+        )
+
+        # LLMから回答を取得する用のChainを作成
+        question_answer_chain = create_stuff_documents_chain(llm, question_answer_prompt)
+        # 「RAG x 会話履歴の記憶機能」を実現するためのChainを作成
+        chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+
+        # LLMへのリクエストとストリーミングレスポンス取得
+        chat_history = st.session_state.get('chat_history', [])
+        
+        # ストリーミング処理
+        full_answer = ""
+        for chunk in chain.stream({"input": user_input, "chat_history": chat_history}):
+            if "answer" in chunk:
+                content = chunk["answer"]
+                full_answer += content
+                yield {"content": content}
+        
+        # LLMレスポンスを会話履歴に追加
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+        st.session_state.chat_history.extend([HumanMessage(content=user_input), full_answer])
+
+    except Exception as e:
+        def error_generator():
+            yield {"content": f"回答生成中にエラーが発生しました: {str(e)}"}
+        return error_generator()

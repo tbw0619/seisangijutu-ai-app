@@ -146,38 +146,39 @@ if chat_message:
         st.markdown(chat_message)
 
     # ==========================================
-    # 7-2. LLMからの回答取得
+    # 7-2. LLMからの回答取得（ストリーミング）
     # ==========================================
-    # 「st.spinner」でグルグル回っている間、表示の不具合が発生しないよう空のエリアを表示
-    res_box = st.empty()
-    # LLMによる回答生成（回答生成が完了するまでグルグル回す）
-    with st.spinner(ct.SPINNER_TEXT):
+    with st.chat_message("assistant"):
         try:
-            # RAG機能を使って回答を取得
-            llm_response = utils.get_rag_chain_answer_qa(chat_message)
+            # ストリーミング表示用のコンテナを作成
+            response_container = st.empty()
+            full_response = ""
+            
+            # RAG機能を使ってストリーミング回答を取得
+            llm_response_stream = utils.get_rag_chain_answer_qa_streaming(chat_message)
+            
+            # ストリーミングレスポンスを逐次表示
+            for chunk in llm_response_stream:
+                if chunk and "content" in chunk:
+                    full_response += chunk["content"]
+                    # LaTeX数式の整形処理
+                    formatted_response = utils.format_latex_equations(full_response)
+                    response_container.markdown(formatted_response)
+            
+            # 最終的なレスポンスの整形
+            content = {
+                "mode": ct.ANSWER_MODE_2,
+                "answer": formatted_response
+            }
+            
+            # AIメッセージのログ出力
+            logger.info({"message": content, "application_mode": st.session_state.mode})
+            
         except Exception as e:
             # エラーログの出力
             logger.error(f"{ct.GET_LLM_RESPONSE_ERROR_MESSAGE}\n{e}")
             # エラーメッセージの画面表示
             st.error(utils.build_error_message(ct.GET_LLM_RESPONSE_ERROR_MESSAGE), icon=ct.ERROR_ICON)
-            # 後続の処理を中断
-            st.stop()
-    
-    # ==========================================
-    # 7-3. LLMからの回答表示
-    # ==========================================
-    with st.chat_message("assistant"):
-        try:
-            # 「問い合わせ」モードの回答と、参照した教科書・教材の内容を表示
-            content = cn.display_contact_llm_response(llm_response)
-            
-            # AIメッセージのログ出力
-            logger.info({"message": content, "application_mode": st.session_state.mode})
-        except Exception as e:
-            # エラーログの出力
-            logger.error(f"{ct.DISP_ANSWER_ERROR_MESSAGE}\n{e}")
-            # エラーメッセージの画面表示
-            st.error(utils.build_error_message(ct.DISP_ANSWER_ERROR_MESSAGE), icon=ct.ERROR_ICON)
             # 後続の処理を中断
             st.stop()
 

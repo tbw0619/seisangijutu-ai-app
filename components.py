@@ -68,7 +68,7 @@ def display_conversation_log():
                 # 「問い合わせ」の場合の表示処理
                 else:
                     # LLMからの回答を表示（LaTeX対応）
-                    st.markdown(message["content"]["answer"], unsafe_allow_html=True)
+                    st.markdown(message["content"]["answer"])
 
 
 def display_contact_llm_response(llm_response):
@@ -84,8 +84,8 @@ def display_contact_llm_response(llm_response):
     # LaTeX数式の整形処理
     answer = utils.format_latex_equations(llm_response["answer"])
     
-    # LLMからの回答を表示（unsafe_allow_htmlでLaTeX処理を有効化）
-    st.markdown(answer, unsafe_allow_html=True)
+    # LLMからの回答を表示。LaTeXが含まれている場合はmarkdownで処理
+    st.markdown(answer)
 
     # 表示用の会話ログに格納するためのデータを用意
     content = {}
