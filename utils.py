@@ -300,7 +300,7 @@ def initialize_rag():
 
 def format_latex_equations(text):
     """
-    LaTeX数式を厳格なルールに従って人間が読みやすい形式に変換
+    LaTeX数式を厳格なルールに従って$記号で囲む形式に変換
     """
     import re
     
@@ -370,6 +370,9 @@ def format_latex_equations(text):
         
         # 数式を$記号で囲む（厳格ルールに従う）
         return f"${math_content}$"
+    
+    # 【】で囲まれた数式も$記号に変換（既存の出力対応）
+    text = re.sub(r'【([^】]+)】', convert_math, text)
     
     # $$ で囲まれた数式を変換
     text = re.sub(r'\$\$\s*([^$]+?)\s*\$\$', convert_math, text)
