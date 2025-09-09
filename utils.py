@@ -300,26 +300,64 @@ def initialize_rag():
 
 def format_latex_equations(text):
     """
-    LaTeX数式の整形処理（Streamlit LaTeX対応）
+    LaTeX数式を人間が読みやすい形式に変換
     """
     import re
     
-    # StreamlitのLaTeX表示用に処理
-    # [ ] で囲まれた数式をStreamlit LaTeX形式に変換
-    text = re.sub(r'\[\s*([^\[\]]+?)\s*\]', r'$$\1$$', text)
+    # LaTeX記号を読みやすい形式に変換
+    latex_conversions = {
+        r'\\propto': '∝ (比例)',
+        r'\\frac\{1\}\{([^}]+)\}': r'1/\1',
+        r'\\frac\{([^}]+)\}\{([^}]+)\}': r'\1/\2',
+        r'\\cdot': '×',
+        r'\\times': '×',
+        r'\\div': '÷',
+        r'\\pm': '±',
+        r'\\mp': '∓',
+        r'\\leq': '≤',
+        r'\\geq': '≥',
+        r'\\neq': '≠',
+        r'\\approx': '≈',
+        r'\\sqrt\{([^}]+)\}': r'√(\1)',
+        r'\\sum': 'Σ',
+        r'\\int': '∫',
+        r'\\pi': 'π',
+        r'\\alpha': 'α',
+        r'\\beta': 'β',
+        r'\\gamma': 'γ',
+        r'\\delta': 'δ',
+        r'\\theta': 'θ',
+        r'\\lambda': 'λ',
+        r'\\mu': 'μ',
+        r'\\omega': 'ω',
+        r'\\Omega': 'Ω',
+        r'([A-Za-z])_\{([^}]+)\}': r'\1_\2',
+        r'([A-Za-z])_([0-9]+)': r'\1_\2',
+        r'\^\{([^}]+)\}': r'^(\1)',
+        r'\^([0-9]+)': r'^\1'
+    }
     
-    # 単一の$で囲まれたインライン数式を処理
-    text = re.sub(r'(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)', r'$\1$', text)
+    # $ または $$ で囲まれた数式を検出して変換
+    def convert_math(match):
+        math_content = match.group(1) if match.group(1) else match.group(2)
+        
+        # LaTeX記号を順次変換
+        for latex_pattern, replacement in latex_conversions.items():
+            math_content = re.sub(latex_pattern, replacement, math_content)
+        
+        # 数式として整形
+        return f"【{math_content}】"
     
-    # 数式内のアンダースコアを適切に処理（I_1 → I_{1}）
-    text = re.sub(r'([A-Za-z])_([0-9]+)', r'\1_{\2}', text)
+    # $$ で囲まれた数式を変換
+    text = re.sub(r'\$\$\s*([^$]+?)\s*\$\$', convert_math, text)
+    # $ で囲まれた数式を変換
+    text = re.sub(r'(?<!\$)\$\s*([^$]+?)\s*\$(?!\$)', convert_math, text)
     
-    # 複数の連続する$$を整理
-    text = re.sub(r'\$\$\s*\$\$', r'$$', text)
+    # [ ] で囲まれた数式も変換
+    text = re.sub(r'\[\s*([^\[\]]+?)\s*\]', convert_math, text)
     
-    # 空の数式を削除
-    text = re.sub(r'\$\$\s*\$\$', '', text)
-    text = re.sub(r'\$\s*\$', '', text)
+    # 空の数式記号を削除
+    text = re.sub(r'\$+', '', text)
     
     return text
 
