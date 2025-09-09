@@ -93,8 +93,12 @@ with st.sidebar:
                     except Exception as e:
                         st.error(f"初期化エラー: {e}")
         else:
-            st.success("✅ RAG機能が有効です")
-            if st.button("🔄 RAG機能を再初期化"):
+            st.success("✅ RAG機能が有効です（例題検索最適化済み）")
+            if st.button("🔄 RAG機能を再初期化", help="キャッシュをクリアして最新設定で再構築"):
+                # キャッシュクリア
+                import shutil
+                if os.path.exists(ct.RAG_CACHE_DIR):
+                    shutil.rmtree(ct.RAG_CACHE_DIR)
                 st.session_state.rag_initialized = False
                 st.rerun()
 
